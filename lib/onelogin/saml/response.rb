@@ -7,6 +7,7 @@ module Onelogin::Saml
     ASSERTION = "urn:oasis:names:tc:SAML:2.0:assertion"
     PROTOCOL  = "urn:oasis:names:tc:SAML:2.0:protocol"
     DSIG      = "http://www.w3.org/2000/09/xmldsig#"
+    XENC      = "http://www.w3.org/2001/04/xmlenc#"
 
     attr_accessor :options, :response, :document, :settings
 
@@ -15,6 +16,8 @@ module Onelogin::Saml
       self.options  = options
       self.response = response
       self.document = XMLSecurity::SignedDocument.new(Base64.decode64(response))
+      
+      
     end
 
     def is_valid?
@@ -70,6 +73,25 @@ module Onelogin::Saml
       @conditions ||= begin
         REXML::XPath.first(document, "/p:Response/a:Assertion[@ID='#{document.signed_element_id[1,document.signed_element_id.size]}']/a:Conditions", { "p" => PROTOCOL, "a" => ASSERTION })
       end
+    end
+    
+    def decrypt_assertions
+      key_cipher_value = REXML::XPath.first(self.document, "/p:Response/a:EncryptedAssertion/xenc:EncryptedData/dsig:KeyInfo/xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue", { "p" => PROTOCOL, "a" => ASSERTION, "xenc" => XENC, "dsig" => DSIG })
+      private_key = OpenSSL::PKey::RSA.new(settings.private_key)
+      key = private_key.private_decrypt(Base64.decode64(key_cipher_value.text))
+      cipher_value = REXML::XPath.first(document, "/p:Response/a:EncryptedAssertion/xenc:EncryptedData/xenc:CipherData/xenc:CipherValue", { "p" => PROTOCOL, "a" => ASSERTION, "xenc" => XENC, "dsig" => DSIG })
+      cipher_value_text = Base64.decode64(cipher_value.text)
+      cipher = OpenSSL::Cipher::Cipher.new('aes-128-cbc')
+      cipher.decrypt
+      cipher.key = key
+      cipher.iv = cipher_value_text[0..16]
+      assertion_text = cipher.update(cipher_value_text[16..-1])
+      assertion_text << cipher.update("\x00" * 16)
+      padding = assertion_text.bytes.to_a.last
+      assertion_text = assertion_text[0..-(padding + 1)]
+      Rails.logger.debug("Assertion text: #{assertion_text}")
+      assertion_element = REXML::Document.new(assertion_text)
+      self.document.root.add_element(assertion_element.root)
     end
 
     private
