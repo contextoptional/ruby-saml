@@ -77,6 +77,8 @@ module Onelogin::Saml
     
     def decrypt_assertions
       return unless settings.private_key
+      
+      @original_document ||= XMLSecurity::SignedDocument.new(self.document.to_s)
       Logging.debug("Response value: #{self.document.to_s}")
       key_cipher_value = REXML::XPath.first(self.document, "/p:Response/a:EncryptedAssertion/xenc:EncryptedData/dsig:KeyInfo/xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue", { "p" => PROTOCOL, "a" => ASSERTION, "xenc" => XENC, "dsig" => DSIG })
       return unless key_cipher_value
@@ -107,7 +109,7 @@ module Onelogin::Saml
     def validate(soft = true)
       validate_response_state(soft) &&
       validate_conditions(soft)     &&
-      document.validate(get_fingerprint, soft)
+      (@original_document || document).validate(get_fingerprint, soft)
     end
 
     def validate_response_state(soft = true)
