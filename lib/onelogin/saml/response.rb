@@ -76,10 +76,14 @@ module Onelogin::Saml
     end
     
     def decrypt_assertions
+      return unless settings.private_key
+      Logging.debug("Response value: #{self.document.to_s}")
       key_cipher_value = REXML::XPath.first(self.document, "/p:Response/a:EncryptedAssertion/xenc:EncryptedData/dsig:KeyInfo/xenc:EncryptedKey/xenc:CipherData/xenc:CipherValue", { "p" => PROTOCOL, "a" => ASSERTION, "xenc" => XENC, "dsig" => DSIG })
+      return unless key_cipher_value
       private_key = OpenSSL::PKey::RSA.new(settings.private_key)
       key = private_key.private_decrypt(Base64.decode64(key_cipher_value.text))
       cipher_value = REXML::XPath.first(document, "/p:Response/a:EncryptedAssertion/xenc:EncryptedData/xenc:CipherData/xenc:CipherValue", { "p" => PROTOCOL, "a" => ASSERTION, "xenc" => XENC, "dsig" => DSIG })
+      return unless cipher_value
       cipher_value_text = Base64.decode64(cipher_value.text)
       cipher = OpenSSL::Cipher::Cipher.new('aes-128-cbc')
       cipher.decrypt
@@ -89,7 +93,7 @@ module Onelogin::Saml
       assertion_text << cipher.update("\x00" * 16)
       padding = assertion_text.bytes.to_a.last
       assertion_text = assertion_text[0..-(padding + 1)]
-      Rails.logger.debug("Assertion text: #{assertion_text}")
+      Logging.debug("Assertion text: #{assertion_text}")
       assertion_element = REXML::Document.new(assertion_text)
       self.document.root.add_element(assertion_element.root)
     end
