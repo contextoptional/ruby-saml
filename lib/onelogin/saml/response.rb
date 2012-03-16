@@ -59,6 +59,13 @@ module Onelogin::Saml
         result
       end
     end
+    
+    def status_message
+      @status_message ||= begin
+        node = REXML::XPath.first(document, "/p:Response/p:Status/p:StatusMessage", { "p" => PROTOCOL})
+        node && node.text
+      end
+    end
 
     # When this user session should expire at latest
     def session_expires_at
