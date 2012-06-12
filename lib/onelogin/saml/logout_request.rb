@@ -6,9 +6,12 @@ require "rexml/document"
 require "rexml/xpath"
 
 module Onelogin::Saml
-include REXML
-  class LogoutRequest < SamlRequest
-    
+  include REXML
+
+  class LogoutRequest
+    include OutgoingMessage
+    include IncomingMessage
+
 =begin
 <saml2p:LogoutRequest xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol"
 	ID="21B78E9C6C8ECF16F01E4A0F15AB2D46" IssueInstant="2010-04-28T21:36:11.230Z"
@@ -24,35 +27,40 @@ include REXML
 </saml2p:LogoutRequest>
 =end
 
-    def create(settings, login_name, params = {})
+    def create(login_name, params = {})
+      request_doc = build_document(login_name)
+      
+      encode_request(request_doc, params)
+    end
+
+    def build_document(login_name)
       uuid = "_" + UUID.new.generate
       time = Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
-      # Create AuthnRequest root element using REXML 
+      # Create AuthnRequest root element using REXML
       request_doc = REXML::Document.new
-      
-      root = request_doc.add_element "samlp:LogoutRequest", { "xmlns:samlp" => "urn:oasis:names:tc:SAML:2.0:protocol" }
+
+      root = request_doc.add_element "samlp:LogoutRequest", {"xmlns:samlp" => PROTOCOL}
       root.attributes['ID'] = uuid
       root.attributes['IssueInstant'] = time
       root.attributes['Version'] = "2.0"
-      
+
       # Conditionally defined elements based on settings
       if settings.assertion_consumer_service_url != nil
         root.attributes["AssertionConsumerServiceURL"] = settings.assertion_consumer_service_url
       end
       if settings.issuer != nil
-        issuer = root.add_element "saml:Issuer", { "xmlns:saml" => "urn:oasis:names:tc:SAML:2.0:assertion" }
+        issuer = root.add_element "saml:Issuer", {"xmlns:saml" => ASSERTION}
         issuer.text = settings.issuer
       end
-      name_id = root.add_element "saml:NameID", { 
-          "xmlns:saml" => "urn:oasis:names:tc:SAML:2.0:assertion",
-          "Format" => settings.name_identifier_format
+      name_id = root.add_element "saml:NameID", {
+        "xmlns:saml" => ASSERTION,
+        "Format" => settings.name_identifier_format
       }
       name_id.add_text(login_name)
-      
-      encode_request(request_doc, settings, params)
+      request_doc
     end
-  
-    def url(settings)
+
+    def url
       settings.idp_single_logout_target_url
     end
   end

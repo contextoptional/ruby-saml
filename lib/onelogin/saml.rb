@@ -1,10 +1,10 @@
 require 'onelogin/saml/logging'
-require 'onelogin/saml/saml_request'
-require 'onelogin/saml/authrequest'
-require 'onelogin/saml/logout_request'
-require 'onelogin/saml/response'
 require 'onelogin/saml/settings'
 require 'onelogin/saml/validation_error'
+require 'onelogin/saml/outgoing_message'
+require 'onelogin/saml/incoming_message'
+require 'onelogin/saml/authrequest'
+require 'onelogin/saml/response'
+require 'onelogin/saml/logout_request'
+require 'onelogin/saml/logout_response'
 require 'onelogin/saml/metadata'
-
-

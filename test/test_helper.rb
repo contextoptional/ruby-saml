@@ -2,7 +2,6 @@ require 'rubygems'
 require 'test/unit'
 require 'shoulda'
 require 'mocha'
-require 'ruby-debug'
 
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
 $LOAD_PATH.unshift(File.dirname(__FILE__))
@@ -16,6 +15,10 @@ class Test::Unit::TestCase
     else
       File.read(response)
     end
+  end
+
+  def logout_request_document
+    @logout_request_document ||= File.read(File.join(File.dirname(__FILE__), 'requests', 'logout_request.xml.base64'))
   end
 
   def response_document
