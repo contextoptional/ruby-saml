@@ -12,6 +12,10 @@ module Onelogin::Saml
     def build_document(logout_request, params = {})
       request_doc = REXML::Document.new
       root = create_root_element(request_doc, "LogoutResponse")
+      if settings.issuer != nil
+        issuer = root.add_element "saml:Issuer", {"xmlns:saml" => ASSERTION}
+        issuer.text = settings.issuer
+      end
       root.attributes["InResponseTo"] = logout_request.id
       root.attributes["Destination"] = settings.idp_single_logout_target_url
 
@@ -20,6 +24,10 @@ module Onelogin::Saml
       status_code_element.attributes["Value"] = "urn:oasis:names:tc:SAML:2.0:status:Success"
 
       request_doc
+    end
+
+    def parameter_name
+      "SAMLResponse"
     end
 
     def url

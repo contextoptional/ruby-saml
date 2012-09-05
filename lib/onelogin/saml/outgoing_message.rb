@@ -73,13 +73,17 @@ module Onelogin::Saml
       base64_request = Base64.encode64(deflated_request)
       encoded_request = CGI.escape(base64_request)
       params_prefix = (self.url =~ /\?/) ? '&' : '?'
-      request_params = "#{params_prefix}SAMLRequest=#{encoded_request}"
+      request_params = "#{params_prefix}#{parameter_name}=#{encoded_request}"
 
       params.each_pair do |key, value|
         request_params << "&#{key}=#{CGI.escape(value.to_s)}"
       end
 
       self.url + request_params
+    end
+
+    def parameter_name
+      "SAMLRequest"
     end
 
     def url
