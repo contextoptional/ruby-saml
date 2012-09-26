@@ -15,9 +15,19 @@ module Onelogin::Saml
     def parse(response, options = {})
       raise ArgumentError.new("Response cannot be nil") if response.nil?
       self.options = options
+      response = decode_message(response, options[:request_method] || :get)
       self.response = response
-      self.document = XMLSecurity::SignedDocument.new(Base64.decode64(response))
+      self.document = XMLSecurity::SignedDocument.new(response)
       self
+    end
+
+    def decode_message(message, request_method)
+      message = Base64.decode64(message)
+      if request_method.to_s.upcase == "GET"
+        # Redirect binding
+        message = Zlib::Inflate.new(-Zlib::MAX_WBITS).inflate(message)
+      end
+      message
     end
 
     def id

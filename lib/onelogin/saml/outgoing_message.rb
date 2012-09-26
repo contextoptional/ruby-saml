@@ -10,13 +10,51 @@ module Onelogin::Saml
     XENC      = "http://www.w3.org/2001/04/xmlenc#"
 
     attr_accessor :settings
+    attr_accessor :request_doc
 
     def initialize(my_settings)
       raise ArgumentError.new("Settings cannot be nil") if my_settings.nil?
       self.settings = my_settings
     end
 
+    def as_redirect(params = {})
+      request = to_s
+
+      Logging.debug "Created AuthnRequest: #{request}"
+
+      deflated_request = Zlib::Deflate.deflate(request, 9)[2..-5]
+      base64_request = Base64.encode64(deflated_request)
+      encoded_request = CGI.escape(base64_request)
+      params_prefix = (self.url =~ /\?/) ? '&' : '?'
+      request_params = "#{params_prefix}#{parameter_name}=#{encoded_request}"
+
+      params.each_pair do |key, value|
+        request_params << "&#{key}=#{CGI.escape(value.to_s)}"
+      end
+
+      self.url + request_params
+    end
+
+    def as_post_value
+      Base64.encode64(self.to_s)
+    end
+
+    def to_s
+      request = ""
+      self.request_doc.write(request)
+      request
+    end
+
+    def parameter_name
+      "SAMLRequest"
+    end
+
+    def url
+      settings.idp_sso_target_url
+    end
+
     protected
+
     def create_root_element(request_doc, element_name)
       uuid = "_" + UUID.new.generate
       time = Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -61,33 +99,6 @@ module Onelogin::Saml
       x509_certificate.add_text(Base64.encode64(settings.sp_cert.to_s))
 
       Logging.debug("Signed Request Doc: #{request_doc.to_s}")
-    end
-
-    def encode_request(request_doc, params = {})
-      request = ""
-      request_doc.write(request)
-
-      Logging.debug "Created AuthnRequest: #{request}"
-
-      deflated_request = Zlib::Deflate.deflate(request, 9)[2..-5]
-      base64_request = Base64.encode64(deflated_request)
-      encoded_request = CGI.escape(base64_request)
-      params_prefix = (self.url =~ /\?/) ? '&' : '?'
-      request_params = "#{params_prefix}#{parameter_name}=#{encoded_request}"
-
-      params.each_pair do |key, value|
-        request_params << "&#{key}=#{CGI.escape(value.to_s)}"
-      end
-
-      self.url + request_params
-    end
-
-    def parameter_name
-      "SAMLRequest"
-    end
-
-    def url
-      settings.idp_sso_target_url
     end
   end
 end

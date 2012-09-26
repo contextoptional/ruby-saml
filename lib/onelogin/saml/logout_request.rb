@@ -27,19 +27,13 @@ module Onelogin::Saml
 </saml2p:LogoutRequest>
 =end
 
-    def create(login_name, params = {})
-      request_doc = build_document(login_name)
-      
-      encode_request(request_doc, params)
-    end
-
-    def build_document(login_name)
+    def create(login_name)
       uuid = "_" + UUID.new.generate
       time = Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
       # Create AuthnRequest root element using REXML
-      request_doc = REXML::Document.new
+      self.request_doc = REXML::Document.new
 
-      root = request_doc.add_element "samlp:LogoutRequest", {"xmlns:samlp" => PROTOCOL}
+      root = self.request_doc.add_element "samlp:LogoutRequest", {"xmlns:samlp" => PROTOCOL}
       root.attributes['ID'] = uuid
       root.attributes['IssueInstant'] = time
       root.attributes['Version'] = "2.0"
@@ -57,7 +51,7 @@ module Onelogin::Saml
         "Format" => settings.name_identifier_format
       }
       name_id.add_text(login_name)
-      request_doc
+      self
     end
 
     def url

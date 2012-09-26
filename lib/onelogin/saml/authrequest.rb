@@ -12,9 +12,9 @@ module Onelogin::Saml
   class Authrequest
     include OutgoingMessage
 
-    def create(params = {})
-      request_doc = REXML::Document.new
-      root = create_root_element(request_doc, "AuthnRequest")
+    def create()
+      self.request_doc = REXML::Document.new
+      root = create_root_element(self.request_doc, "AuthnRequest")
 
       # Conditionally defined elements based on settings
       if settings.assertion_consumer_service_url != nil
@@ -47,9 +47,8 @@ module Onelogin::Saml
         class_ref.text = settings.authn_context
       end
 
-      sign_request(request_doc)
-
-      encode_request(request_doc, params)
+      sign_request(self.request_doc)
+      self
     end
   end
 end
